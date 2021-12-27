@@ -1,4 +1,4 @@
-import os
+import os, sys
 from glob import glob
 
 mapping_dict = {
@@ -16,7 +16,6 @@ mapping_dict = {
     "abs": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-unary",
     "ceil": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-unary",
     "cos": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-unary",
-    "exp": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-unary",
     "floor": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-unary",
     "log": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-unary",
     "neg": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-unary",
@@ -27,7 +26,7 @@ mapping_dict = {
     "gru": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-gru",
     "gruCell": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-grucell",
     "hardSigmoid": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-hard-sigmoid",
-    "hardSwish": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-hard-swish",
+    "hard_swish": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-hard-swish",
     "instanceNormalization": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-instancenorm",
     "leakyRelu": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-leakyrelu",
     "matmul": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-matmul",
@@ -47,7 +46,9 @@ mapping_dict = {
     "squeeze": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-squeeze",
     "tanh": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-tanh",
     "transpose": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-transpose",
-    "cts": "https://webmachinelearning.github.io/webnn/#api-neuralnetworkcontext-binary"
+    "cts": "https://webmachinelearning.github.io/webnn/#api-neuralnetworkcontext-binary",
+    "element-wise unary operations": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-unary",
+    "resample2d": "https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder-resample2d"
 }
 
 def wpt_converter(input_path, output_path):
@@ -65,20 +66,23 @@ def wpt_converter(input_path, output_path):
         if title_text == "batch_norm":
             title_text = "batchNormalization"
             link_text = mapping_dict[title_text]
-            title_text = "batchNormalization" + " operation"
+            title_text = "batchNormalization operation"
         elif title_text == "instance_norm":
             title_text = "instanceNormalization"
             link_text = mapping_dict[title_text]
-            title_text = "instanceNormalization" + " operation"
+            title_text = "instanceNormalization operation"
         elif title_text == "leaky_relu":
             title_text = "leakyRelu"
             link_text = mapping_dict[title_text]
-            title_text = "leakyRelu" + " operation"
+            title_text = "leakyRelu operation"
         elif title_text == "pool2d":
             title_text = "pooling operations"
             link_text = mapping_dict[title_text]
         elif title_text == "reduce":
             title_text = "reduction operations"
+            link_text = mapping_dict[title_text]
+        elif title_text =="unary":
+            title_text = "element-wise unary operations"
             link_text = mapping_dict[title_text]
         else:
             link_text = mapping_dict[title_text]
@@ -87,9 +91,9 @@ def wpt_converter(input_path, output_path):
 <meta charset=utf-8>
 <title>test %s</title>
 <link rel="help" href="%s">
-<script src="../resources/testharness.js"></script>
-<script src="../resources/testharnessreport.js"></script>
-<script src="./dist/webnn-polyfill.js"></script>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="https://webmachinelearning.github.io/webnn-polyfill/dist/webnn-polyfill.js"></script>
 <div id=log></div>
 <script type="module">
   'use strict';
@@ -133,13 +137,16 @@ def wpt_converter(input_path, output_path):
                         js_line = js_line.replace("  });\n", "  }, " + case_name + ");\n")
                     elif js_line.startswith("});\n"):
                         continue
+                    elif "unary.js" in js_name:
+                        if js_line.startswith("  function test(op, input, expected, shape) {"):
+                            js_line = js_line.replace("  function test(op, input, expected, shape) {", "  function testUnary(op, input, expected, shape) {")
+                        elif js_line.startswith("    test("):
+                            js_line = js_line.replace("    test(", "    testUnary(")
                     html_writer.writelines(js_line)    
             html_writer.writelines('</script>\n')
 
 
 if __name__ == "__main__": 
-    # input_path = sys.argv[1]
-    # output_path = sys.argv[2]
-    input_path = "./ops_js"
-    output_path = "./ops_html"
+    input_path = sys.argv[1]
+    output_path = sys.argv[2]
     wpt_converter(input_path, output_path)
