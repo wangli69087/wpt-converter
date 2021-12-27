@@ -2,6 +2,13 @@ import os, sys
 from glob import glob
 from typing import KeysView
 
+def get_index(l, x, n):
+    if n <= l.count(x):
+        all_index = [key for key, value in enumerate(l) if value == x]
+        return all_index[n-1]
+    else:
+        return None
+
 def wpt_model_converter(input_path, output_path):
     all_js_files_list = list()
     if os.path.isdir(input_path):
@@ -9,7 +16,7 @@ def wpt_model_converter(input_path, output_path):
     elif os.path.isfile(input_path):
         all_js_files_list.append(input_path)
     else:
-        print("input path error")
+        print("Input path error")
         return
     for js_name in all_js_files_list:
         if "squeezenet" in js_name:
@@ -22,9 +29,9 @@ def wpt_model_converter(input_path, output_path):
 <meta charset=utf-8>
 <title>test %s</title>
 <link rel="help" href="https://webmachinelearning.github.io/webnn/#api-mlgraphbuilder">
-<script src="../resources/testharness.js"></script>
-<script src="../resources/testharnessreport.js"></script>
-<script src="./dist/webnn-polyfill.js"></script>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="https://webmachinelearning.github.io/webnn-polyfill/dist/webnn-polyfill.js"></script>
 <div id=log></div>
 <script type="module">
   'use strict';
@@ -32,7 +39,6 @@ def wpt_model_converter(input_path, output_path):
   let graph;
   let fusedGraph;
   let builder;
-  let fusedBatchNorm = false
   const url = import.meta.url;
   const testDataDir = 'https://webmachinelearning.github.io/test-data/models/%s';\n
   setup(() => {
@@ -62,7 +68,11 @@ def wpt_model_converter(input_path, output_path):
                 elif "  after(() => {\n" in js_content_list:
                     after_line_index = js_content_list.index("  after(() => {\n")
                 for js_line in js_content_list:
-                    current_line_index = js_content_list.index(js_line)
+                    repeat_counts = js_content_list.count(js_line)
+                    if repeat_counts > 1:
+                        current_line_index = get_index(js_content_list, js_line, repeat_counts)
+                    else:
+                        current_line_index = js_content_list.index(js_line)
                     if "import" in js_line:
                         continue
                     elif js_line.startswith("'use strict';"):
@@ -77,11 +87,11 @@ def wpt_model_converter(input_path, output_path):
                         continue
                     elif js_line.startswith("const testDataDir = '../../test-data/models/"):
                         continue
+                    elif js_line.startswith('/* eslint max-len: ["error", {"code": 120}] */'):
+                        continue
                     elif js_line.startswith("  let graph;"):
                         continue
                     elif js_line.startswith("  let fusedGraph;"):
-                        continue
-                    elif js_line.startswith("    let fusedBatchNorm = false;"):
                         continue
                     elif js_line.startswith("  let beforeNumBytes;"):
                         continue
@@ -115,7 +125,7 @@ def wpt_model_converter(input_path, output_path):
                         continue
                     elif js_line.startswith("  it(") or js_line.startswith("  it.skip("):
                         case_tag = True
-                        new_js_line = "  promise_test(async () => {  \n"
+                        new_js_line = "  promise_test(async () => {\n"
                         if "(fused ops)" in js_line:
                             case_name = js_line.split(",")[0].split("(")[1] + '(' + js_line.split(",")[0].split("(")[2]
                             html_writer.writelines(new_js_line)
@@ -128,7 +138,7 @@ def wpt_model_converter(input_path, output_path):
                         continue
                     elif js_line.startswith("  });"):
                         if case_tag:
-                            js_line = js_line.replace("  });\n", "  }, " + '"test ' + title_text + " / " + case_name.strip("'") + '"' + ");\n")
+                            js_line = js_line.replace("  });\n", "    }, \'test %s / %s\');\n" % (title_text, case_name.strip("'")))
                         else:
                             continue
                     elif js_line.startswith("});"):
@@ -141,8 +151,6 @@ def wpt_model_converter(input_path, output_path):
 
 
 if __name__ == "__main__": 
-    # input_path = sys.argv[1]
-    # output_path = sys.argv[2]
-    input_path = "./models"
-    output_path = "./models_html2"
+    input_path = sys.argv[1]
+    output_path = sys.argv[2]
     wpt_model_converter(input_path, output_path)
